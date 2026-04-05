@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>単語一覧</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f5f5; }
+.container { max-width: 1100px; margin: 24px auto; background: #fff; padding: 24px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+h1 { text-align: center; margin-top: 0; }
+.top-bar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 24px; }
+select, button, .link-btn { font-size: 16px; padding: 10px 14px; border-radius: 10px; border: 1px solid #ccc; background: white; text-decoration: none; color: #222; }
+button { background: #4CAF50; color: white; border: none; cursor: pointer; }
+.word-list { display: grid; gap: 12px; }
+.word-card { display: grid; grid-template-columns: 1.2fr auto 2fr; gap: 12px; align-items: center; padding: 14px; border: 1px solid #e5e5e5; border-radius: 14px; background: #fafafa; }
+.word-text { font-size: 22px; font-weight: 700; word-break: break-word; }
+.meaning-text { font-size: 18px; line-height: 1.5; }
+.speak-btn { font-size: 16px; padding: 8px 12px; border: none; border-radius: 10px; background: #4CAF50; color: white; cursor: pointer; }
+@media (max-width: 768px) { .word-card { grid-template-columns: 1fr; text-align: center; } .word-text { font-size: 20px; } .meaning-text { font-size: 16px; }}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>単語一覧</h1>
+  <div class="top-bar">
+    <select id="langSelect"><option value="en">英語</option><option value="de">ドイツ語</option></select>
+    <select id="chapterSelect"></select>
+    <a href="index.html" class="link-btn">テスト画面へ</a>
+  </div>
+  <div id="wordList" class="word-list"></div>
+</div>
+<script src="words_en.js"></script>
+<script src="words_de.js"></script>
+<script>
+const data = { en: words_en, de: words_de };
+let currentLang = 'en';
+let availableVoices = [];
+function loadVoices(){ availableVoices = speechSynthesis.getVoices(); }
+loadVoices();
+speechSynthesis.onvoiceschanged = loadVoices;
+function splitIntoChapters(words, size) { const out=[]; for(let i=0;i<words.length;i+=size) out.push(words.slice(i,i+size)); return out; }
+function formatMeanings(meanings){ const list = Array.isArray(meanings) ? meanings : [meanings]; return list.map((m,i)=>`${String.fromCharCode(9312+i)} ${m}`).join(' / '); }
+function speak(text){ speechSynthesis.cancel(); const uttr = new SpeechSynthesisUtterance(text); uttr.rate = 0.9; const voices = availableVoices; if(currentLang==='de'){ const voice = voices.find(v=>v.lang==='de-DE') || voices.find(v=>v.lang.startsWith('de')); if(voice){ uttr.voice=voice; uttr.lang=voice.lang; } else uttr.lang='de-DE'; } else { const voice = voices.find(v=>v.lang==='en-US') || voices.find(v=>v.lang.startsWith('en')); if(voice){ uttr.voice=voice; uttr.lang=voice.lang; } else uttr.lang='en-US'; } speechSynthesis.speak(uttr); }
+const langSelect = document.getElementById('langSelect');
+const chapterSelect = document.getElementById('chapterSelect');
+const wordList = document.getElementById('wordList');
+function setupChapters(){ const chapters = splitIntoChapters(data[currentLang],100); chapterSelect.innerHTML=''; chapters.forEach((_,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=`第${i+1}章`; chapterSelect.appendChild(o); }); renderWordList(); }
+function renderWordList(){ const chapters = splitIntoChapters(data[currentLang],100); const currentChapter = Number(chapterSelect.value || 0); const words = chapters[currentChapter] || []; wordList.innerHTML=''; words.forEach(word=>{ const card=document.createElement('div'); card.className='word-card'; const wt=document.createElement('div'); wt.className='word-text'; wt.textContent=word.en; const btn=document.createElement('button'); btn.className='speak-btn'; btn.textContent='発音'; btn.addEventListener('click', ()=>speak(word.en)); const mt=document.createElement('div'); mt.className='meaning-text'; mt.textContent=formatMeanings(word.jp); card.appendChild(wt); card.appendChild(btn); card.appendChild(mt); wordList.appendChild(card); }); }
+langSelect.addEventListener('change', ()=>{ currentLang=langSelect.value; setupChapters(); });
+chapterSelect.addEventListener('change', renderWordList);
+setupChapters();
+</script>
+</body>
+</html>
