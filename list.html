@@ -5,50 +5,437 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>単語一覧</title>
 <style>
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f5f5; }
-.container { max-width: 1100px; margin: 24px auto; background: #fff; padding: 24px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
-h1 { text-align: center; margin-top: 0; }
-.top-bar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 24px; }
-select, button, .link-btn { font-size: 16px; padding: 10px 14px; border-radius: 10px; border: 1px solid #ccc; background: white; text-decoration: none; color: #222; }
-button { background: #4CAF50; color: white; border: none; cursor: pointer; }
-.word-list { display: grid; gap: 12px; }
-.word-card { display: grid; grid-template-columns: 1.2fr auto 2fr; gap: 12px; align-items: center; padding: 14px; border: 1px solid #e5e5e5; border-radius: 14px; background: #fafafa; }
-.word-text { font-size: 22px; font-weight: 700; word-break: break-word; }
-.meaning-text { font-size: 18px; line-height: 1.5; }
-.speak-btn { font-size: 16px; padding: 8px 12px; border: none; border-radius: 10px; background: #4CAF50; color: white; cursor: pointer; }
-@media (max-width: 768px) { .word-card { grid-template-columns: 1fr; text-align: center; } .word-text { font-size: 20px; } .meaning-text { font-size: 16px; }}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  margin: 0;
+  background: #f5f5f5;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 30px auto;
+  background: white;
+  padding: 24px;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+h1 {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+.top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+select, button, .link-btn, #searchInput {
+  font-size: 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: white;
+  text-decoration: none;
+  color: #222;
+  box-sizing: border-box;
+}
+
+#searchInput {
+  width: min(420px, 90%);
+}
+
+button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #45a049;
+}
+
+.word-list {
+  display: grid;
+  gap: 14px;
+}
+
+.word-card {
+  display: grid;
+  grid-template-columns: 1.2fr auto 2.2fr;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  background: #fafafa;
+}
+
+.word-text {
+  font-size: 24px;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.meaning-text {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #333;
+  text-align: left;
+}
+
+.speak-btn {
+  font-size: 16px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #4CAF50;
+  color: white;
+  cursor: pointer;
+}
+
+.speak-btn:hover {
+  background: #45a049;
+}
+
+.label {
+  font-weight: 700;
+  color: #555;
+}
+
+.sub-note {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.empty-message {
+  text-align: center;
+  color: #666;
+  padding: 30px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin: 16px;
+    padding: 18px;
+  }
+
+  .word-card {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .meaning-text {
+    text-align: center;
+  }
+
+  .word-text {
+    font-size: 21px;
+  }
+}
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>単語一覧</h1>
-  <div class="top-bar">
-    <select id="langSelect"><option value="en">英語</option><option value="de">ドイツ語</option></select>
-    <select id="chapterSelect"></select>
-    <a href="index.html" class="link-btn">テスト画面へ</a>
+  <div class="container">
+    <h1>単語一覧</h1>
+
+    <div class="top-bar">
+      <select id="studyTypeSelect">
+        <option value="en">英語</option>
+        <option value="de">ドイツ語</option>
+        <option value="de-en">ドイツ語→英語</option>
+      </select>
+
+      <select id="chapterSelect"></select>
+
+      <a href="index.html" class="link-btn">テスト画面へ</a>
+    </div>
+
+    <div class="top-bar">
+      <input type="text" id="searchInput" placeholder="単語・意味・英語で検索">
+      <label style="display:flex; align-items:center; gap:8px; font-size:16px;">
+        <input type="checkbox" id="wrongOnlyCheckbox">
+        間違えた単語だけ表示
+      </label>
+    </div>
+
+    <div class="sub-note">章ごとに単語・発音・意味・品詞・カテゴリを確認できます</div>
+
+    <div id="wordList" class="word-list"></div>
   </div>
-  <div id="wordList" class="word-list"></div>
-</div>
-<script src="words_en.js"></script>
-<script src="words_de.js"></script>
-<script>
-const data = { en: words_en, de: words_de };
-let currentLang = 'en';
-let availableVoices = [];
-function loadVoices(){ availableVoices = speechSynthesis.getVoices(); }
-loadVoices();
-speechSynthesis.onvoiceschanged = loadVoices;
-function splitIntoChapters(words, size) { const out=[]; for(let i=0;i<words.length;i+=size) out.push(words.slice(i,i+size)); return out; }
-function formatMeanings(meanings){ const list = Array.isArray(meanings) ? meanings : [meanings]; return list.map((m,i)=>`${String.fromCharCode(9312+i)} ${m}`).join(' / '); }
-function speak(text){ speechSynthesis.cancel(); const uttr = new SpeechSynthesisUtterance(text); uttr.rate = 0.9; const voices = availableVoices; if(currentLang==='de'){ const voice = voices.find(v=>v.lang==='de-DE') || voices.find(v=>v.lang.startsWith('de')); if(voice){ uttr.voice=voice; uttr.lang=voice.lang; } else uttr.lang='de-DE'; } else { const voice = voices.find(v=>v.lang==='en-US') || voices.find(v=>v.lang.startsWith('en')); if(voice){ uttr.voice=voice; uttr.lang=voice.lang; } else uttr.lang='en-US'; } speechSynthesis.speak(uttr); }
-const langSelect = document.getElementById('langSelect');
-const chapterSelect = document.getElementById('chapterSelect');
-const wordList = document.getElementById('wordList');
-function setupChapters(){ const chapters = splitIntoChapters(data[currentLang],100); chapterSelect.innerHTML=''; chapters.forEach((_,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=`第${i+1}章`; chapterSelect.appendChild(o); }); renderWordList(); }
-function renderWordList(){ const chapters = splitIntoChapters(data[currentLang],100); const currentChapter = Number(chapterSelect.value || 0); const words = chapters[currentChapter] || []; wordList.innerHTML=''; words.forEach(word=>{ const card=document.createElement('div'); card.className='word-card'; const wt=document.createElement('div'); wt.className='word-text'; wt.textContent=word.en; const btn=document.createElement('button'); btn.className='speak-btn'; btn.textContent='発音'; btn.addEventListener('click', ()=>speak(word.en)); const mt=document.createElement('div'); mt.className='meaning-text'; mt.textContent=formatMeanings(word.jp); card.appendChild(wt); card.appendChild(btn); card.appendChild(mt); wordList.appendChild(card); }); }
-langSelect.addEventListener('change', ()=>{ currentLang=langSelect.value; setupChapters(); });
-chapterSelect.addEventListener('change', renderWordList);
-setupChapters();
-</script>
+
+  <script src="words_en_nouns.js"></script>
+  <script src="words_en_verbs.js"></script>
+  <script src="words_en_adjectives.js"></script>
+  <script src="words_en_adverbs.js"></script>
+  <script src="words_en_others.js"></script>
+
+  <script src="words_de_nouns.js"></script>
+  <script src="words_de_verbs.js"></script>
+  <script src="words_de_adjectives.js"></script>
+  <script src="words_de_adverbs.js"></script>
+  <script src="words_de_others.js"></script>
+  <script>
+
+    const words_en = [
+  ...words_en_nouns,
+  ...words_en_verbs,
+  ...words_en_adjectives,
+  ...words_en_adverbs,
+  ...words_en_others
+];
+
+const words_de = [
+  ...words_de_nouns,
+  ...words_de_verbs,
+  ...words_de_adjectives,
+  ...words_de_adverbs,
+  ...words_de_others
+];
+
+    const data = {
+      en: words_en,
+      de: words_de
+    };
+
+    let currentStudyType = "en";
+    let availableVoices = [];
+
+    const studyTypeSelect = document.getElementById("studyTypeSelect");
+    const chapterSelect = document.getElementById("chapterSelect");
+    const wordList = document.getElementById("wordList");
+    const searchInput = document.getElementById("searchInput");
+    const wrongOnlyCheckbox = document.getElementById("wrongOnlyCheckbox");
+
+    function normalizeWrongWords(raw) {
+      if (!Array.isArray(raw)) return [];
+
+      return raw.map(item => {
+        if (item && typeof item === "object" && "key" in item && "word" in item) {
+          return {
+            key: item.key,
+            streak: typeof item.streak === "number" ? item.streak : 0,
+            word: item.word
+          };
+        }
+
+        if (item && typeof item === "object") {
+          const key = item.de ? `de::${item.de}` : `en::${item.en}`;
+          return {
+            key,
+            streak: 0,
+            word: item
+          };
+        }
+
+        return null;
+      }).filter(Boolean);
+    }
+
+    function splitIntoChapters(words, size) {
+      const result = [];
+      for (let i = 0; i < words.length; i += size) {
+        result.push(words.slice(i, i + size));
+      }
+      return result;
+    }
+
+    function formatMeanings(meanings) {
+      const list = Array.isArray(meanings) ? meanings : [meanings];
+      return list.map((m, i) => `${String.fromCharCode(9312 + i)} ${m}`).join(" / ");
+    }
+
+    function loadVoices() {
+      availableVoices = speechSynthesis.getVoices();
+    }
+
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+
+    function getCurrentLanguage() {
+      return currentStudyType === "en" ? "en" : "de";
+    }
+
+    function getCurrentWordList() {
+      return currentStudyType === "en" ? data.en : data.de;
+    }
+
+    function getHeadword(word) {
+      return currentStudyType === "en" ? word.en : word.de;
+    }
+
+    function getWordKey(word) {
+      if (word.de) return `de::${word.de}`;
+      return `en::${word.en}`;
+    }
+
+    function speak(text) {
+      speechSynthesis.cancel();
+
+      const uttr = new SpeechSynthesisUtterance(text);
+      uttr.rate = 0.85;
+      uttr.pitch = 1.0;
+      uttr.volume = 1.0;
+
+      const voices = availableVoices;
+      const currentLang = getCurrentLanguage();
+
+      if (currentLang === "de") {
+        const germanVoice =
+          voices.find(v => v.lang === "de-DE") ||
+          voices.find(v => v.lang.startsWith("de")) ||
+          voices.find(v => v.name.toLowerCase().includes("german")) ||
+          voices.find(v => v.name.toLowerCase().includes("deutsch"));
+
+        if (germanVoice) {
+          uttr.voice = germanVoice;
+          uttr.lang = germanVoice.lang;
+        } else {
+          uttr.lang = "de-DE";
+        }
+      } else {
+        const englishVoice =
+          voices.find(v => v.lang === "en-US") ||
+          voices.find(v => v.lang.startsWith("en"));
+
+        if (englishVoice) {
+          uttr.voice = englishVoice;
+          uttr.lang = englishVoice.lang;
+        } else {
+          uttr.lang = "en-US";
+        }
+      }
+
+      setTimeout(() => {
+        speechSynthesis.speak(uttr);
+      }, 120);
+    }
+
+    function setupChapters() {
+      const chapters = splitIntoChapters(getCurrentWordList(), 100);
+
+      chapterSelect.innerHTML = "";
+
+      chapters.forEach((_, i) => {
+        const option = document.createElement("option");
+        option.value = i;
+        option.textContent = `第${i + 1}章`;
+        chapterSelect.appendChild(option);
+      });
+
+      renderWordList();
+    }
+
+    function renderWordList() {
+      const chapters = splitIntoChapters(getCurrentWordList(), 100);
+      const currentChapter = Number(chapterSelect.value || 0);
+      let words = chapters[currentChapter] || [];
+
+      const searchText = searchInput.value.trim().toLowerCase();
+
+      const wrongWords = normalizeWrongWords(
+        JSON.parse(localStorage.getItem("wrongWords")) || []
+      );
+      localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
+      const wrongKeys = wrongWords.map(item => item.key);
+
+      if (wrongOnlyCheckbox.checked) {
+        const targetLang = currentStudyType === "en" ? "en" : "de";
+        words = words.filter(word => {
+          const key = getWordKey(word);
+          const isWrong = wrongKeys.includes(key);
+
+          if (!isWrong) return false;
+
+          if (targetLang === "en") {
+            return !!word.en && !word.de;
+          } else {
+            return !!word.de;
+          }
+        });
+      }
+
+      if (searchText) {
+        words = words.filter(word => {
+          const head = getHeadword(word).toLowerCase();
+          const jp = formatMeanings(word.jp).toLowerCase();
+          const enText = word.en ? formatMeanings(word.en).toLowerCase() : "";
+          const pos = (word.pos || "").toLowerCase();
+          const category = (word.category || "").toLowerCase();
+
+          return (
+            head.includes(searchText) ||
+            jp.includes(searchText) ||
+            enText.includes(searchText) ||
+            pos.includes(searchText) ||
+            category.includes(searchText)
+          );
+        });
+      }
+
+      wordList.innerHTML = "";
+
+      if (words.length === 0) {
+        wordList.innerHTML = `<div class="empty-message">該当する単語がありません</div>`;
+        return;
+      }
+
+      words.forEach(word => {
+        const card = document.createElement("div");
+        card.className = "word-card";
+
+        const wordText = document.createElement("div");
+        wordText.className = "word-text";
+        wordText.textContent = getHeadword(word);
+
+        const speakButton = document.createElement("button");
+        speakButton.className = "speak-btn";
+        speakButton.textContent = "発音";
+        speakButton.addEventListener("click", () => speak(getHeadword(word)));
+
+        const meaningText = document.createElement("div");
+        meaningText.className = "meaning-text";
+
+        if (currentStudyType === "en") {
+          meaningText.innerHTML = `
+            <div><span class="label">品詞:</span> ${word.pos || "-"}</div>
+            <div><span class="label">カテゴリ:</span> ${word.category || "-"}</div>
+            <div><span class="label">日本語:</span> ${formatMeanings(word.jp)}</div>
+          `;
+        } else {
+          meaningText.innerHTML = `
+            <div><span class="label">品詞:</span> ${word.pos || "-"}</div>
+            <div><span class="label">カテゴリ:</span> ${word.category || "-"}</div>
+            <div><span class="label">英語:</span> ${formatMeanings(word.en)}</div>
+            <div><span class="label">日本語:</span> ${formatMeanings(word.jp)}</div>
+          `;
+        }
+
+        card.appendChild(wordText);
+        card.appendChild(speakButton);
+        card.appendChild(meaningText);
+
+        wordList.appendChild(card);
+      });
+    }
+
+    studyTypeSelect.addEventListener("change", () => {
+      currentStudyType = studyTypeSelect.value;
+      setupChapters();
+    });
+
+    chapterSelect.addEventListener("change", renderWordList);
+    searchInput.addEventListener("input", renderWordList);
+    wrongOnlyCheckbox.addEventListener("change", renderWordList);
+
+    setupChapters();
+  </script>
 </body>
 </html>

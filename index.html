@@ -45,12 +45,19 @@ button {
   border: none;
   cursor: pointer;
 }
-button:hover { background: #45a049; }
+button:hover {
+  background: #45a049;
+}
 #meaning {
   font-size: 32px;
-  margin: 28px 0;
+  margin: 28px 0 8px;
   font-weight: 700;
   line-height: 1.5;
+}
+#partOfSpeech {
+  font-size: 18px;
+  color: #666;
+  margin-bottom: 16px;
 }
 input {
   width: min(620px, 86%);
@@ -74,7 +81,9 @@ input {
   color: #222;
   cursor: pointer;
 }
-.choice-btn:hover { background: #ddd; }
+.choice-btn:hover {
+  background: #ddd;
+}
 #result {
   font-size: 24px;
   margin-top: 18px;
@@ -86,65 +95,193 @@ input {
   font-size: 14px;
 }
 @media (max-width: 768px) {
-  .container { padding: 20px; }
-  #meaning { font-size: 26px; }
-  #choices { grid-template-columns: 1fr; }
-  input { font-size: 20px; }
+  .container {
+    padding: 20px;
+  }
+  #meaning {
+    font-size: 26px;
+  }
+  #choices {
+    grid-template-columns: 1fr;
+  }
+  input {
+    font-size: 20px;
+  }
 }
 </style>
 </head>
 <body>
 <div class="container">
   <h2>単語テスト</h2>
+
   <div class="top-bar">
-    <select id="langSelect">
+    <select id="studyTypeSelect">
       <option value="en">英語</option>
       <option value="de">ドイツ語</option>
+      <option value="de-en">ドイツ語→英語</option>
     </select>
+
     <select id="chapterSelect"></select>
+
     <select id="modeSelect">
       <option value="input">入力モード</option>
       <option value="choice">選択モード</option>
     </select>
+
     <button onclick="loadWrongWords()">復習</button>
     <a href="list.html" class="link-btn">単語一覧へ</a>
   </div>
 
   <div id="meaning"></div>
+  <div id="partOfSpeech"></div>
   <div id="choices"></div>
   <input type="text" id="answer" placeholder="スペル入力">
   <div id="result"></div>
   <div class="sub-note">入力モード: Enterで答え合わせ → Enterで次へ / 選択モード: タップで自動で次へ</div>
 </div>
 
-<script src="words_en.js"></script>
-<script src="words_de.js"></script>
+<script src="words_en_nouns.js"></script>
+<script src="words_en_verbs.js"></script>
+<script src="words_en_adjectives.js"></script>
+<script src="words_en_adverbs.js"></script>
+<script src="words_en_others.js"></script>
+
+<script src="words_de_nouns.js"></script>
+<script src="words_de_verbs.js"></script>
+<script src="words_de_adjectives.js"></script>
+<script src="words_de_adverbs.js"></script>
+<script src="words_de_others.js"></script>
 <script>
-const data = { en: words_en, de: words_de };
-let currentLang = "en";
+
+const words_en = [
+  ...words_en_nouns,
+  ...words_en_verbs,
+  ...words_en_adjectives,
+  ...words_en_adverbs,
+  ...words_en_others
+];
+
+const words_de = [
+  ...words_de_nouns,
+  ...words_de_verbs,
+  ...words_de_adjectives,
+  ...words_de_adverbs,
+  ...words_de_others
+];
+const data = {
+  en: words_en,
+  de: words_de
+};
+
+let currentStudyType = "en";
 let chapters = [];
 let currentChapter = 0;
 let currentIndex = 0;
 let isAnswered = false;
 let availableVoices = [];
-let wrongWords = JSON.parse(localStorage.getItem("wrongWords")) || [];
+
+function normalizeWrongWords(raw) {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map(item => {
+    if (item && typeof item === "object" && "key" in item && "word" in item) {
+      return {
+        key: item.key,
+        streak: typeof item.streak === "number" ? item.streak : 0,
+        word: item.word
+      };
+    }
+
+    if (item && typeof item === "object") {
+      const key = item.de ? `de::${item.de}` : `en::${item.en}`;
+      return {
+        key,
+        streak: 0,
+        word: item
+      };
+    }
+
+    return null;
+  }).filter(Boolean);
+}
+
+let wrongWords = normalizeWrongWords(
+  JSON.parse(localStorage.getItem("wrongWords")) || []
+);
+localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
+
+const studyTypeSelect = document.getElementById("studyTypeSelect");
+const chapterSelect = document.getElementById("chapterSelect");
+const modeSelect = document.getElementById("modeSelect");
+const meaningEl = document.getElementById("meaning");
+const posEl = document.getElementById("partOfSpeech");
+const choicesDiv = document.getElementById("choices");
+const answerEl = document.getElementById("answer");
+const resultEl = document.getElementById("result");
+
+function getWordKey(word) {
+  if (word.de) return `de::${word.de}`;
+  return `en::${word.en}`;
+}
+
+function saveWrongWords() {
+  localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
+}
+
+function addWrongWord(word) {
+  const key = getWordKey(word);
+  const existing = wrongWords.find(item => item.key === key);
+
+  if (existing) {
+    existing.word = word;
+    existing.streak = 0;
+  } else {
+    wrongWords.push({
+      key,
+      streak: 0,
+      word
+    });
+  }
+
+  saveWrongWords();
+}
+
+function markCorrectForWrongWord(word) {
+  const key = getWordKey(word);
+  const existing = wrongWords.find(item => item.key === key);
+
+  if (!existing) return;
+
+  existing.streak += 1;
+
+  if (existing.streak >= 3) {
+    wrongWords = wrongWords.filter(item => item.key !== key);
+  }
+
+  saveWrongWords();
+}
 
 function splitIntoChapters(words, size) {
-  const chapters = [];
-  for (let i = 0; i < words.length; i += size) chapters.push(words.slice(i, i + size));
-  return chapters;
+  const result = [];
+  for (let i = 0; i < words.length; i += size) {
+    result.push(words.slice(i, i + size));
+  }
+  return result;
 }
+
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
 }
-function formatMeanings(meanings){
+
+function formatMeanings(meanings) {
   const list = Array.isArray(meanings) ? meanings : [meanings];
   return list.map((m, i) => `${String.fromCharCode(9312 + i)} ${m}`).join(" / ");
 }
-function normalizeGerman(text){
+
+function normalizeGerman(text) {
   return text
     .toLowerCase()
     .replace(/ä/g, "a")
@@ -153,120 +290,204 @@ function normalizeGerman(text){
     .replace(/ß/g, "ss")
     .replace(/\s/g, "");
 }
-function loadVoices() { availableVoices = speechSynthesis.getVoices(); }
+
+function loadVoices() {
+  availableVoices = speechSynthesis.getVoices();
+}
+
 loadVoices();
 speechSynthesis.onvoiceschanged = loadVoices;
 
-function speak(text){
+function getCurrentLanguage() {
+  return currentStudyType === "en" ? "en" : "de";
+}
+
+function getCurrentWordList() {
+  return currentStudyType === "en" ? data.en : data.de;
+}
+
+function getHeadword(word) {
+  if (currentStudyType === "en") return word.en;
+  return word.de;
+}
+
+function speak(text) {
   speechSynthesis.cancel();
+
   const uttr = new SpeechSynthesisUtterance(text);
-  uttr.rate = 0.9;
+  uttr.rate = 0.85;
+  uttr.pitch = 1.0;
+  uttr.volume = 1.0;
+
   const voices = availableVoices;
-  if(currentLang === "de"){
+  const currentLang = getCurrentLanguage();
+
+  if (currentLang === "de") {
     const germanVoice =
       voices.find(v => v.lang === "de-DE") ||
-      voices.find(v => v.lang === "de_DE") ||
       voices.find(v => v.lang.startsWith("de")) ||
       voices.find(v => v.name.toLowerCase().includes("german")) ||
       voices.find(v => v.name.toLowerCase().includes("deutsch"));
-    if(germanVoice){ uttr.voice = germanVoice; uttr.lang = germanVoice.lang; }
-    else uttr.lang = "de-DE";
+
+    if (germanVoice) {
+      uttr.voice = germanVoice;
+      uttr.lang = germanVoice.lang;
+    } else {
+      uttr.lang = "de-DE";
+    }
   } else {
-    const englishVoice = voices.find(v => v.lang === "en-US") || voices.find(v => v.lang.startsWith("en"));
-    if(englishVoice){ uttr.voice = englishVoice; uttr.lang = englishVoice.lang; }
-    else uttr.lang = "en-US";
+    const englishVoice =
+      voices.find(v => v.lang === "en-US") ||
+      voices.find(v => v.lang.startsWith("en"));
+
+    if (englishVoice) {
+      uttr.voice = englishVoice;
+      uttr.lang = englishVoice.lang;
+    } else {
+      uttr.lang = "en-US";
+    }
   }
-  speechSynthesis.speak(uttr);
+
+  setTimeout(() => {
+    speechSynthesis.speak(uttr);
+  }, 120);
 }
 
-const langSelect = document.getElementById("langSelect");
-const chapterSelect = document.getElementById("chapterSelect");
-const modeSelect = document.getElementById("modeSelect");
-const meaningEl = document.getElementById("meaning");
-const choicesDiv = document.getElementById("choices");
-const answerEl = document.getElementById("answer");
-const resultEl = document.getElementById("result");
-
-modeSelect.addEventListener("change", showWord);
-langSelect.addEventListener("change", () => { currentLang = langSelect.value; setupChapters(); });
-chapterSelect.addEventListener("change", () => {
-  currentChapter = Number(chapterSelect.value);
-  currentIndex = 0;
-  shuffle(chapters[currentChapter]);
-  showWord();
-});
-answerEl.addEventListener("keydown", (e) => {
-  if(modeSelect.value !== "input") return;
-  if(e.key === "Enter"){
-    if(!isAnswered){ checkAnswer(); isAnswered = true; }
-    else { nextWord(); isAnswered = false; }
+function getPromptText(word, mode) {
+  if (currentStudyType === "en") {
+    if (mode === "input") return formatMeanings(word.jp);
+    return word.en;
   }
-});
 
-function setupChapters() {
-  chapters = splitIntoChapters(data[currentLang], 100);
-  chapterSelect.innerHTML = "";
-  chapters.forEach((_, i) => {
-    const op = document.createElement("option");
-    op.value = i;
-    op.textContent = `第${i + 1}章`;
-    chapterSelect.appendChild(op);
-  });
-  currentChapter = 0;
-  currentIndex = 0;
-  if (chapters.length > 0) shuffle(chapters[0]);
-  showWord();
+  if (currentStudyType === "de") {
+    if (mode === "input") return formatMeanings(word.jp);
+    return word.de;
+  }
+
+  if (currentStudyType === "de-en") {
+    return word.de;
+  }
+
+  return "";
 }
 
-function createChoices(correctWord){
-  const all = data[currentLang];
-  const correctList = Array.isArray(correctWord.jp) ? correctWord.jp : [correctWord.jp];
-  const correctMeaning = correctList[Math.floor(Math.random() * correctList.length)];
+function createChoices(correctWord, targetKey) {
+  const all = getCurrentWordList();
+
+  const correctList = Array.isArray(correctWord[targetKey])
+    ? correctWord[targetKey]
+    : [correctWord[targetKey]];
+
+  const correctAnswer =
+    correctList[Math.floor(Math.random() * correctList.length)];
+
+  const correctHead =
+    currentStudyType === "en" ? correctWord.en : correctWord.de;
+
+  function getHead(word) {
+    return currentStudyType === "en" ? word.en : word.de;
+  }
+
+  function pickDummyFrom(pool, dummy) {
+    let safety = 0;
+    while (dummy.length < 3 && safety < 200) {
+      safety++;
+
+      const randWord = pool[Math.floor(Math.random() * pool.length)];
+      if (!randWord) break;
+
+      const randList = Array.isArray(randWord[targetKey])
+        ? randWord[targetKey]
+        : [randWord[targetKey]];
+
+      const randAnswer =
+        randList[Math.floor(Math.random() * randList.length)];
+
+      if (
+        randAnswer !== correctAnswer &&
+        !dummy.includes(randAnswer)
+      ) {
+        dummy.push(randAnswer);
+      }
+    }
+  }
+
+  const samePosAndCategory = all.filter(word =>
+    getHead(word) !== correctHead &&
+    word.pos === correctWord.pos &&
+    word.category === correctWord.category
+  );
+
+  const samePos = all.filter(word =>
+    getHead(word) !== correctHead &&
+    word.pos === correctWord.pos
+  );
+
+  const allOthers = all.filter(word =>
+    getHead(word) !== correctHead
+  );
+
   const dummy = [];
-  while(dummy.length < 3 && all.length > 3){
-    const randWord = all[Math.floor(Math.random() * all.length)];
-    if(randWord.en === correctWord.en) continue;
-    const randList = Array.isArray(randWord.jp) ? randWord.jp : [randWord.jp];
-    const randMeaning = randList[Math.floor(Math.random() * randList.length)];
-    if(randMeaning !== correctMeaning && !dummy.includes(randMeaning)) dummy.push(randMeaning);
+
+  pickDummyFrom(samePosAndCategory, dummy);
+
+  if (dummy.length < 3) {
+    pickDummyFrom(samePos, dummy);
   }
-  const choices = [correctMeaning, ...dummy];
+
+  if (dummy.length < 3) {
+    pickDummyFrom(allOthers, dummy);
+  }
+
+  const choices = [correctAnswer, ...dummy];
   shuffle(choices);
   return choices;
 }
 
 function showWord() {
   const word = chapters[currentChapter]?.[currentIndex];
-  if(!word){
+
+  if (!word) {
     meaningEl.textContent = "単語データがありません";
+    posEl.textContent = "";
     choicesDiv.innerHTML = "";
     answerEl.style.display = "none";
     return;
   }
+
+  const mode = modeSelect.value;
+
   resultEl.textContent = "";
   resultEl.style.color = "";
-  if(modeSelect.value === "input"){
-    meaningEl.textContent = formatMeanings(word.jp);
+  posEl.textContent = `品詞: ${word.pos || "-"}`;
+  meaningEl.textContent = getPromptText(word, mode);
+
+  choicesDiv.innerHTML = "";
+  answerEl.value = "";
+
+  if (mode === "input") {
     answerEl.style.display = "inline-block";
     answerEl.style.pointerEvents = "auto";
-    answerEl.value = "";
-    choicesDiv.innerHTML = "";
     answerEl.focus();
   } else {
-    meaningEl.textContent = word.en;
     answerEl.style.display = "none";
     answerEl.style.pointerEvents = "none";
-    answerEl.value = "";
-    const choices = createChoices(word);
-    choicesDiv.innerHTML = "";
+
+    let targetKey = "jp";
+    if (currentStudyType === "de-en") {
+      targetKey = "en";
+    }
+
+    const choices = createChoices(word, targetKey);
     choices.forEach(choice => {
       const btn = document.createElement("button");
       btn.textContent = choice;
       btn.className = "choice-btn";
-      btn.onclick = () => handleChoice(choice, word);
+      btn.onclick = () => handleChoice(choice, word, targetKey);
       choicesDiv.appendChild(btn);
     });
   }
+
   isAnswered = false;
 }
 
@@ -274,38 +495,55 @@ function checkAnswer() {
   const inputRaw = answerEl.value.trim().toLowerCase();
   const word = chapters[currentChapter][currentIndex];
   let isCorrect = false;
-  if(currentLang === "de") isCorrect = normalizeGerman(inputRaw) === normalizeGerman(word.en);
-  else isCorrect = inputRaw === word.en.toLowerCase();
+
+  if (currentStudyType === "en") {
+    isCorrect = inputRaw === word.en.toLowerCase();
+  } else {
+    const accepted = normalizeGerman(word.de.replace(/^(der|die|das)\s+/i, ""));
+    const withArticle = normalizeGerman(word.de);
+    const input = normalizeGerman(inputRaw);
+
+    isCorrect = input === withArticle || input === accepted;
+  }
 
   if (isCorrect) {
-    resultEl.textContent = "⭕ 正解";
+    markCorrectForWrongWord(word);
+    resultEl.textContent = `⭕ 正解 / ${formatMeanings(word.jp)} / 品詞: ${word.pos || "-"}${word.category ? " / カテゴリ: " + word.category : ""}`;
     resultEl.style.color = "green";
   } else {
-    resultEl.textContent = `❌ ${word.en}`;
+    addWrongWord(word);
+    const head = getHeadword(word);
+    resultEl.textContent = `❌ ${head} / ${formatMeanings(word.jp)} / 品詞: ${word.pos || "-"}${word.category ? " / カテゴリ: " + word.category : ""}`;
     resultEl.style.color = "red";
-    if (!wrongWords.some(w => w.en === word.en)) {
-      wrongWords.push(word);
-      localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
-    }
   }
-  speak(word.en);
+
+  speak(getHeadword(word));
 }
 
-function handleChoice(selected, word){
-  const meanings = Array.isArray(word.jp) ? word.jp : [word.jp];
-  if(meanings.includes(selected)) {
-    resultEl.textContent = "⭕ 正解";
+function handleChoice(selected, word, targetKey) {
+  const answers = Array.isArray(word[targetKey]) ? word[targetKey] : [word[targetKey]];
+
+  if (answers.includes(selected)) {
+    markCorrectForWrongWord(word);
+
+    if (currentStudyType === "de-en") {
+      resultEl.textContent = `⭕ 正解 / 英語: ${formatMeanings(word.en)} / 日本語: ${formatMeanings(word.jp)} / 品詞: ${word.pos || "-"}${word.category ? " / カテゴリ: " + word.category : ""}`;
+    } else {
+      resultEl.textContent = `⭕ 正解 / ${formatMeanings(word.jp)} / 品詞: ${word.pos || "-"}${word.category ? " / カテゴリ: " + word.category : ""}`;
+    }
+
     resultEl.style.color = "green";
   } else {
-    resultEl.textContent = `❌ ${formatMeanings(word.jp)}`;
+    addWrongWord(word);
+    resultEl.textContent = `❌ ${formatMeanings(word[targetKey])} / 品詞: ${word.pos || "-"}${word.category ? " / カテゴリ: " + word.category : ""}`;
     resultEl.style.color = "red";
-    if (!wrongWords.some(w => w.en === word.en)) {
-      wrongWords.push(word);
-      localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
-    }
   }
-  speak(word.en);
-  setTimeout(() => nextWord(), 800);
+
+  speak(getHeadword(word));
+
+  setTimeout(() => {
+    nextWord();
+  }, 1200);
 }
 
 function nextWord() {
@@ -317,15 +555,94 @@ function nextWord() {
   showWord();
 }
 
-function loadWrongWords(){
-  if(wrongWords.length === 0){ alert("まだミスはありません"); return; }
-  chapters = [wrongWords];
+function setupChapters() {
+  chapters = splitIntoChapters(getCurrentWordList(), 100);
+  chapterSelect.innerHTML = "";
+
+  chapters.forEach((_, i) => {
+    const op = document.createElement("option");
+    op.value = i;
+    op.textContent = `第${i + 1}章`;
+    chapterSelect.appendChild(op);
+  });
+
+  currentChapter = 0;
+  currentIndex = 0;
+
+  if (chapters.length > 0) {
+    shuffle(chapters[0]);
+  }
+
+  showWord();
+}
+
+function loadWrongWords() {
+  const targetLang = currentStudyType === "en" ? "en" : "de";
+
+  const filteredWrongWords = wrongWords.filter(item => {
+    if (!item.word) return false;
+
+    if (targetLang === "en") {
+      return !!item.word.en && !item.word.de;
+    } else {
+      return !!item.word.de;
+    }
+  });
+
+  if (filteredWrongWords.length === 0) {
+    if (targetLang === "en") {
+      alert("英語のミスはまだありません");
+    } else {
+      alert("ドイツ語のミスはまだありません");
+    }
+    return;
+  }
+
+  chapters = [filteredWrongWords.map(item => item.word)];
   currentChapter = 0;
   currentIndex = 0;
   chapterSelect.innerHTML = "<option value='0'>復習</option>";
   shuffle(chapters[0]);
   showWord();
 }
+
+studyTypeSelect.addEventListener("change", () => {
+  currentStudyType = studyTypeSelect.value;
+
+  if (currentStudyType === "de-en") {
+    modeSelect.value = "choice";
+    modeSelect.disabled = true;
+  } else {
+    modeSelect.disabled = false;
+  }
+
+  setupChapters();
+});
+
+modeSelect.addEventListener("change", () => {
+  showWord();
+});
+
+chapterSelect.addEventListener("change", () => {
+  currentChapter = Number(chapterSelect.value);
+  currentIndex = 0;
+  shuffle(chapters[currentChapter]);
+  showWord();
+});
+
+answerEl.addEventListener("keydown", (e) => {
+  if (modeSelect.value !== "input") return;
+
+  if (e.key === "Enter") {
+    if (!isAnswered) {
+      checkAnswer();
+      isAnswered = true;
+    } else {
+      nextWord();
+      isAnswered = false;
+    }
+  }
+});
 
 setupChapters();
 </script>
